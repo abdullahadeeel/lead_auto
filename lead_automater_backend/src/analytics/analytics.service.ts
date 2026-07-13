@@ -14,9 +14,11 @@ export class AnalyticsService {
 
   async trackActivity(userId: string, dto: TrackActivityDto) {
     // Validate product existence
-    const product = await this.prisma.product.findUnique({ where: { id: dto.productId } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: dto.productId },
+    });
     if (!product) {
-        throw new NotFoundException(`Product with ID ${dto.productId} not found`);
+      throw new NotFoundException(`Product with ID ${dto.productId} not found`);
     }
 
     const activity = await this.prisma.userActivity.create({
@@ -25,14 +27,33 @@ export class AnalyticsService {
         productId: dto.productId,
         type: dto.type,
       },
-      include: {
-        user: true,
-        product: true,
+      select: {
+        id: true,
+        userId: true,
+        productId: true,
+        type: true,
+        createdAt: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+          },
+        },
       },
     });
 
     // Get dynamic threshold
-    const settings = await this.prisma.systemSettings.findUnique({ where: { id: 'singleton' } });
+    const settings = await this.prisma.systemSettings.findUnique({
+      where: { id: 'singleton' },
+    });
     const threshold = settings?.viewThreshold || 3;
 
     if (dto.type === ActivityType.VIEW) {
@@ -66,35 +87,44 @@ export class AnalyticsService {
   }
 
   private async triggerLeadEmail(email: string, productName: string) {
-    // Add to queue
-    await this.emailQueue.add('send-email', {
-      type: 'LEAD_EMAIL',
-      data: {
-        email,
-        productName,
-      },
-    });
-    
-    // Log in database
-    await this.prisma.emailLog.create({
+    // Add to queue with deterministic jobId
+    // Using a combination of email and productName to avoid duplicate leads for the same product
+    const jobId = `lead-email:${email}:${productName.replace(/\s+/g, '-').toLowerCase()}`;
+
+    await this.emailQueue.add(
+      'send-email',
+      {
+        type: 'LEAD_EMAIL',
         data: {
-            email,
-            productName
-        }
-    });
+          email,
+          productName,
+        },
+      },
+      {
+        jobId,
+      },
+    );
   }
 
   async getRecommendations(userId: string) {
     // Basic recommendation logic: products from categories the user has liked or viewed most
     const userActivities = await this.prisma.userActivity.findMany({
       where: { userId },
-      include: { product: true },
+      select: {
+        product: {
+          select: {
+            categoryId: true,
+          },
+        },
+      },
     });
 
     const categoryCounts = new Map<string, number>();
     userActivities.forEach((act) => {
-      const catId = act.product.categoryId;
-      categoryCounts.set(catId, (categoryCounts.get(catId) || 0) + 1);
+      if (act.product?.categoryId) {
+        const catId = act.product.categoryId;
+        categoryCounts.set(catId, (categoryCounts.get(catId) || 0) + 1);
+      }
     });
 
     // Sort categories by engagement

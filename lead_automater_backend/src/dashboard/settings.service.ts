@@ -6,9 +6,13 @@ export class SettingsService {
   constructor(private prisma: PrismaService) {}
 
   async getSettings() {
-    let settings = await this.prisma.systemSettings.findUnique({ where: { id: 'singleton' } });
+    let settings = await this.prisma.systemSettings.findUnique({
+      where: { id: 'singleton' },
+    });
     if (!settings) {
-      settings = await this.prisma.systemSettings.create({ data: { id: 'singleton', viewThreshold: 3 } });
+      settings = await this.prisma.systemSettings.create({
+        data: { id: 'singleton', viewThreshold: 3 },
+      });
     }
     return settings;
   }

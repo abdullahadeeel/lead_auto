@@ -33,7 +33,28 @@ export class DashboardService {
   async getUserSummary(userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId },
-      include: { activities: { include: { product: true } } },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isVerified: true,
+        createdAt: true,
+        updatedAt: true,
+        activities: {
+          select: {
+            id: true,
+            type: true,
+            createdAt: true,
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 }

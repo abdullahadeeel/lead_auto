@@ -16,17 +16,22 @@ export class RolesGuard implements CanActivate {
       return true;
     }
     const { user } = context.switchToHttp().getRequest();
-    
+
     if (!user || !user.role) {
-        console.log('RolesGuard: Denied - No user or role found');
-        return false;
+      console.log('RolesGuard: Denied - No user or role found');
+      return false;
     }
 
     const hasRole = requiredRoles.some((role) => user.role === role);
     if (!hasRole) {
-        console.log('RolesGuard: Denied - Required role check failed for user:', user, 'Required:', requiredRoles);
+      console.log(
+        'RolesGuard: Denied - Required role check failed for user:',
+        user,
+        'Required:',
+        requiredRoles,
+      );
     } else {
-        console.log('RolesGuard: Access Granted for user:', user);
+      console.log('RolesGuard: Access Granted for user:', user);
     }
     return hasRole;
   }

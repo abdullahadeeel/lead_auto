@@ -48,6 +48,8 @@ model Product {
   activities  UserActivity[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+
+  @@index([categoryId])
 }
 
 model UserActivity {
@@ -58,6 +60,9 @@ model UserActivity {
   product   Product      @relation(fields: [productId], references: [id])
   type      ActivityType
   createdAt DateTime     @default(now())
+
+  @@index([userId, productId, type])
+  @@index([createdAt])
 }
 
 model VerificationToken {
@@ -73,9 +78,24 @@ model SystemSettings {
   viewThreshold  Int    @default(3)
 }
 
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model EmailLog {
-  id          String   @id @default(uuid())
-  email       String
-  productName String
-  createdAt   DateTime @default(now())
+  id                String      @id @default(uuid())
+  email             String
+  type              String
+  status            EmailStatus @default(PENDING)
+  providerMessageId String?
+  error             String?
+  attempts          Int         @default(0)
+  idempotencyKey    String      @unique
+  metadata          Json?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([createdAt])
 }

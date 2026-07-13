@@ -1,4 +1,10 @@
-import { Injectable, UnauthorizedException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
@@ -35,7 +41,10 @@ export class AuthService {
 
     await this.sendVerificationEmail(user);
 
-    return { message: 'User registered successfully. Please check your email for verification.' };
+    return {
+      message:
+        'User registered successfully. Please check your email for verification.',
+    };
   }
 
   async login(loginDto: LoginDto) {
@@ -50,7 +59,9 @@ export class AuthService {
     if (!user.isVerified) {
       // Trigger a resend
       await this.sendVerificationEmail(user);
-      throw new ForbiddenException('Account not verified. Verification email has been resent.');
+      throw new ForbiddenException(
+        'Account not verified. Verification email has been resent.',
+      );
     }
 
     const payload = { sub: user.id, email: user.email, role: user.role };
@@ -96,7 +107,9 @@ export class AuthService {
 
   private async sendVerificationEmail(user: { id: string; email: string }) {
     // Delete existing token if any
-    await this.prisma.verificationToken.deleteMany({ where: { userId: user.id } });
+    await this.prisma.verificationToken.deleteMany({
+      where: { userId: user.id },
+    });
 
     const token = uuidv4();
     await this.prisma.verificationToken.create({
@@ -107,12 +120,18 @@ export class AuthService {
       },
     });
 
-    await this.emailQueue.add('send-email', {
-      type: 'VERIFY_EMAIL',
-      data: {
-        email: user.email,
-        token,
+    await this.emailQueue.add(
+      'send-email',
+      {
+        type: 'VERIFY_EMAIL',
+        data: {
+          email: user.email,
+          token,
+        },
       },
-    });
+      {
+        jobId: `verify-email:${user.id}:${token}`, // Token included to allow resends with new tokens
+      },
+    );
   }
 }
